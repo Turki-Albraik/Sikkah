@@ -30,6 +30,7 @@ const Signup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const selectedCountry = countryCodes.find((c) => c.code === countryCode);
     const nameErr = getNameError(name);
     if (nameErr) {
       toast({ title: "Error", description: nameErr, variant: "destructive" });
@@ -43,7 +44,12 @@ const Signup = () => {
       toast({ title: "Error", description: emailErr, variant: "destructive" });
       return;
     }
-    const phoneErr = getPhoneError(fullPhone);
+    const phoneErr = getPhoneError(
+      phone,
+      selectedCountry?.minDigits,
+      selectedCountry?.maxDigits,
+      selectedCountry?.country,
+    );
     if (phoneErr) {
       toast({ title: "Error", description: phoneErr, variant: "destructive" });
       return;
