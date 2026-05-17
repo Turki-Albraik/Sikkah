@@ -918,33 +918,46 @@ const NewReservation = () => {
 
             <div className="rounded-xl border border-border bg-card p-6 space-y-4">
               <h3 className="font-display font-semibold text-lg">Contact Information</h3>
-              <div className="space-y-1.5">
-                <Label>Phone (9 digits) *</Label>
-                <div className="flex gap-2">
-                  <Select value={contactCountryCode} onValueChange={setContactCountryCode}>
-                    <SelectTrigger className="w-44">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {countryCodes.map((cc) => (
-                        <SelectItem key={cc.code} value={cc.code}>
-                          {cc.flag} {cc.code} {cc.country}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input 
-                    value={contactPhone} 
-                    onChange={(e) => setContactPhone(e.target.value.replace(/\D/g, "").slice(0, 9))}
-                    placeholder="5XXXXXXXX" 
-                    maxLength={9}
-                    className="flex-1"
-                  />
-                </div>
-                {contactPhone && !validatePhone(contactPhone) && (
-                  <p className="text-xs text-destructive">Phone number must be exactly 9 digits</p>
-                )}
-              </div>
+              {(() => {
+                const cc = countryCodes.find((c) => c.code === contactCountryCode);
+                const minD = cc?.minDigits ?? 9;
+                const maxD = cc?.maxDigits ?? 9;
+                const placeholder = "X".repeat(minD);
+                const phoneErr = contactPhone
+                  ? (contactPhone.length < minD || contactPhone.length > maxD
+                      ? (minD === maxD
+                          ? `Phone number must be ${minD} digits for ${cc?.country}`
+                          : `Phone number must be between ${minD} and ${maxD} digits for ${cc?.country}`)
+                      : null)
+                  : null;
+                return (
+                  <div className="space-y-1.5">
+                    <Label>Phone *</Label>
+                    <div className="flex gap-2">
+                      <Select value={contactCountryCode} onValueChange={(v) => { setContactCountryCode(v); setContactPhone(""); }}>
+                        <SelectTrigger className="w-44">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {countryCodes.map((c) => (
+                            <SelectItem key={c.code} value={c.code}>
+                              {c.flag} {c.code} {c.country}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        value={contactPhone}
+                        onChange={(e) => setContactPhone(e.target.value.replace(/\D/g, "").slice(0, maxD))}
+                        placeholder={placeholder}
+                        maxLength={maxD}
+                        className="flex-1"
+                      />
+                    </div>
+                    {phoneErr && <p className="text-xs text-destructive">{phoneErr}</p>}
+                  </div>
+                );
+              })()}
             </div>
 
             <PaymentCard
