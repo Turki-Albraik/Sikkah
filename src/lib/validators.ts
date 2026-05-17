@@ -55,26 +55,34 @@ export const getPhoneError = (
 ): string | null => {
   if (!phone || !phone.trim()) return "Phone number must not be empty";
   if (/[\s\-()]/.test(phone)) return "Phone number must not contain spaces, dashes, or parentheses";
-  if (!phone.startsWith("+")) return "Phone number must be in international format starting with +";
-  const rest = phone.slice(1);
-  if (!/^[0-9]+$/.test(rest)) return "Phone number must contain numbers only after +";
-  if (rest.length < 7 || rest.length > 15) return "Phone number must be between 7 and 15 digits";
+
+  // Determine the local digit part. Callers may pass either the full "+CC+local" string
+  // or only the local digits. When min/max are provided, the local part is what gets range-checked.
+  let local = phone;
+  if (phone.startsWith("+")) {
+    const rest = phone.slice(1);
+    if (!/^[0-9]+$/.test(rest)) return "Phone number must contain numbers only after +";
+    if (rest.length < 7 || rest.length > 15) return "Phone number must be between 7 and 15 digits";
+    // Strip the leading country code if we can infer it from the provided range:
+    // local length should match [minDigits, maxDigits]; the remainder is the CC.
+    if (minDigits !== undefined && maxDigits !== undefined) {
+      // Try lengths from maxDigits down to minDigits to find a valid suffix split.
+      const candidate = rest.length >= minDigits ? rest.slice(rest.length - Math.min(rest.length, maxDigits)) : rest;
+      local = candidate;
+      // Prefer the exact local length within range when possible.
+      for (let n = maxDigits; n >= minDigits; n--) {
+        if (rest.length >= n) { local = rest.slice(rest.length - n); break; }
+      }
+    } else {
+      local = rest;
+    }
+  } else {
+    if (!/^[0-9]+$/.test(phone)) return "Phone number must contain numbers only";
+  }
 
   if (minDigits !== undefined && maxDigits !== undefined) {
-    // Local part excludes the country code. We expect callers to pass the full +CC+local string.
-    // Determine local length by stripping the country code if it matches a known prefix isn't trivial here;
-    // callers concatenate countryCode + local, so local length = total digits - countryCodeDigits.
-    // We require callers to also provide the local length implicitly: use rest.length minus an assumed CC.
-    // To stay robust, compute by allowing callers to pass just the local part: if rest length is already
-    // within [minDigits, maxDigits], accept; otherwise try subtracting common CC lengths is unreliable.
-    // Simpler contract: assume the local digit count equals rest length minus inferred CC. Since callers
-    // pass the full +CC+local, we approximate by checking if the trailing digits satisfy the range.
-    const local = rest; // when caller passes only local digits with a leading "+CC" prefix handled upstream
-    // Validate using the last segment fits the range — but we actually want exact local digits.
-    // For correctness, the caller should pass only the local part as `phone` after stripping CC.
     const country = countryName ? ` for ${countryName}` : "";
-    const lenOk = local.length >= minDigits && local.length <= maxDigits;
-    if (!lenOk) {
+    if (local.length < minDigits || local.length > maxDigits) {
       if (minDigits === maxDigits) return `Phone number must be ${minDigits} digits${country}`;
       return `Phone number must be between ${minDigits} and ${maxDigits} digits${country}`;
     }
