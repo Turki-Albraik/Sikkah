@@ -56,36 +56,22 @@ export const getPhoneError = (
   if (!phone || !phone.trim()) return "Phone number must not be empty";
   if (/[\s\-()]/.test(phone)) return "Phone number must not contain spaces, dashes, or parentheses";
 
-  // Determine the local digit part. Callers may pass either the full "+CC+local" string
-  // or only the local digits. When min/max are provided, the local part is what gets range-checked.
-  let local = phone;
-  if (phone.startsWith("+")) {
-    const rest = phone.slice(1);
-    if (!/^[0-9]+$/.test(rest)) return "Phone number must contain numbers only after +";
-    if (rest.length < 7 || rest.length > 15) return "Phone number must be between 7 and 15 digits";
-    // Strip the leading country code if we can infer it from the provided range:
-    // local length should match [minDigits, maxDigits]; the remainder is the CC.
-    if (minDigits !== undefined && maxDigits !== undefined) {
-      // Try lengths from maxDigits down to minDigits to find a valid suffix split.
-      const candidate = rest.length >= minDigits ? rest.slice(rest.length - Math.min(rest.length, maxDigits)) : rest;
-      local = candidate;
-      // Prefer the exact local length within range when possible.
-      for (let n = maxDigits; n >= minDigits; n--) {
-        if (rest.length >= n) { local = rest.slice(rest.length - n); break; }
-      }
-    } else {
-      local = rest;
-    }
-  } else {
-    if (!/^[0-9]+$/.test(phone)) return "Phone number must contain numbers only";
-  }
-
+  // When min/max are provided, treat `phone` as the LOCAL digits only (caller strips country code).
   if (minDigits !== undefined && maxDigits !== undefined) {
+    const localDigits = phone.replace(/\D/g, "");
+    if (!/^[0-9]+$/.test(localDigits)) return "Phone number must contain numbers only";
     const country = countryName ? ` for ${countryName}` : "";
-    if (local.length < minDigits || local.length > maxDigits) {
+    if (localDigits.length < minDigits || localDigits.length > maxDigits) {
       if (minDigits === maxDigits) return `Phone number must be ${minDigits} digits${country}`;
       return `Phone number must be between ${minDigits} and ${maxDigits} digits${country}`;
     }
+    return null;
   }
+
+  // Legacy mode: validate as full international "+CC+local".
+  if (!phone.startsWith("+")) return "Phone number must be in international format starting with +";
+  const rest = phone.slice(1);
+  if (!/^[0-9]+$/.test(rest)) return "Phone number must contain numbers only after +";
+  if (rest.length < 7 || rest.length > 15) return "Phone number must be between 7 and 15 digits";
   return null;
 };
