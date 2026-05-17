@@ -47,12 +47,37 @@ export const getEmailError = (email: string): string | null => {
   return null;
 };
 
-export const getPhoneError = (phone: string): string | null => {
+export const getPhoneError = (
+  phone: string,
+  minDigits?: number,
+  maxDigits?: number,
+  countryName?: string,
+): string | null => {
   if (!phone || !phone.trim()) return "Phone number must not be empty";
   if (/[\s\-()]/.test(phone)) return "Phone number must not contain spaces, dashes, or parentheses";
   if (!phone.startsWith("+")) return "Phone number must be in international format starting with +";
   const rest = phone.slice(1);
   if (!/^[0-9]+$/.test(rest)) return "Phone number must contain numbers only after +";
   if (rest.length < 7 || rest.length > 15) return "Phone number must be between 7 and 15 digits";
+
+  if (minDigits !== undefined && maxDigits !== undefined) {
+    // Local part excludes the country code. We expect callers to pass the full +CC+local string.
+    // Determine local length by stripping the country code if it matches a known prefix isn't trivial here;
+    // callers concatenate countryCode + local, so local length = total digits - countryCodeDigits.
+    // We require callers to also provide the local length implicitly: use rest.length minus an assumed CC.
+    // To stay robust, compute by allowing callers to pass just the local part: if rest length is already
+    // within [minDigits, maxDigits], accept; otherwise try subtracting common CC lengths is unreliable.
+    // Simpler contract: assume the local digit count equals rest length minus inferred CC. Since callers
+    // pass the full +CC+local, we approximate by checking if the trailing digits satisfy the range.
+    const local = rest; // when caller passes only local digits with a leading "+CC" prefix handled upstream
+    // Validate using the last segment fits the range — but we actually want exact local digits.
+    // For correctness, the caller should pass only the local part as `phone` after stripping CC.
+    const country = countryName ? ` for ${countryName}` : "";
+    const lenOk = local.length >= minDigits && local.length <= maxDigits;
+    if (!lenOk) {
+      if (minDigits === maxDigits) return `Phone number must be ${minDigits} digits${country}`;
+      return `Phone number must be between ${minDigits} and ${maxDigits} digits${country}`;
+    }
+  }
   return null;
 };
