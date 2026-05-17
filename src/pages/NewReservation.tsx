@@ -896,6 +896,9 @@ const NewReservation = () => {
                   <div className="space-y-1.5">
                     <Label>Full Name *</Label>
                     <Input value={p.name} onChange={(e) => updatePassenger(i, "name", e.target.value.replace(/[^A-Za-z\u00C0-\u024F\u0600-\u06FF\s'\-]/g, ""))} placeholder="e.g. Ahmed Al-Farsi" />
+                    {p.name && getPassengerNameError(p.name) && (
+                      <p className="text-xs text-destructive">{getPassengerNameError(p.name)}</p>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <Label>Email *</Label>
