@@ -84,9 +84,15 @@ const validateEmail = (email: string) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
 };
 
-const validatePhone = (phone: string) => {
-  const digits = phone.replace(/\D/g, "");
-  return digits.length === 9;
+const getPassengerNameError = (name: string): string | null => {
+  const trimmed = name.trim();
+  if (!trimmed) return "Name is required";
+  if (!/^[A-Za-z\u00C0-\u024F\u0600-\u06FF\s'\-]+$/.test(trimmed)) {
+    return "Full name must contain letters only";
+  }
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (words.length < 2) return "Full name must contain at least a first and last name";
+  return null;
 };
 
 const NewReservation = () => {
