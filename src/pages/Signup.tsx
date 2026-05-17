@@ -137,32 +137,43 @@ const Signup = () => {
             <div className="space-y-2">
               <Label htmlFor="name">Full Name *</Label>
               <Input id="name" value={name} onChange={(e) => setName(e.target.value.replace(/[^A-Za-z\u00C0-\u024F\u0600-\u06FF\s'\-]/g, ""))} placeholder="Enter your full name" />
+              {name && getNameError(name) && <p className="text-xs text-destructive">{getNameError(name)}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email *</Label>
               <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" />
               {email && !validateEmail(email) && <p className="text-xs text-destructive">Please enter a valid email</p>}
             </div>
-            <div className="space-y-2">
-              <Label>Phone (9 digits) *</Label>
-              <div className="flex gap-2">
-                <Select value={countryCode} onValueChange={setCountryCode}>
-                  <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {countryCodes.map((cc) => (
-                      <SelectItem key={cc.code} value={cc.code}>{cc.flag} {cc.code}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 9))}
-                  placeholder="5XXXXXXXX"
-                  maxLength={9}
-                  className="flex-1"
-                />
-              </div>
-            </div>
+            {(() => {
+              const selectedCountry = countryCodes.find((c) => c.code === countryCode);
+              const minD = selectedCountry?.minDigits ?? 9;
+              const maxD = selectedCountry?.maxDigits ?? 9;
+              const placeholder = "X".repeat(minD);
+              const phoneErr = phone ? getPhoneError(phone, minD, maxD, selectedCountry?.country) : null;
+              return (
+                <div className="space-y-2">
+                  <Label>Phone *</Label>
+                  <div className="flex gap-2">
+                    <Select value={countryCode} onValueChange={(v) => { setCountryCode(v); setPhone(""); }}>
+                      <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {countryCodes.map((cc) => (
+                          <SelectItem key={cc.code} value={cc.code}>{cc.flag} {cc.code}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, maxD))}
+                      placeholder={placeholder}
+                      maxLength={maxD}
+                      className="flex-1"
+                    />
+                  </div>
+                  {phoneErr && <p className="text-xs text-destructive">{phoneErr}</p>}
+                </div>
+              );
+            })()}
             <div className="space-y-2">
               <Label htmlFor="password">Password *</Label>
               <div className="relative">
