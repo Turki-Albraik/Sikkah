@@ -84,9 +84,15 @@ const validateEmail = (email: string) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
 };
 
-const validatePhone = (phone: string) => {
-  const digits = phone.replace(/\D/g, "");
-  return digits.length === 9;
+const getPassengerNameError = (name: string): string | null => {
+  const trimmed = name.trim();
+  if (!trimmed) return "Name is required";
+  if (!/^[A-Za-z\u00C0-\u024F\u0600-\u06FF\s'\-]+$/.test(trimmed)) {
+    return "Full name must contain letters only";
+  }
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (words.length < 2) return "Full name must contain at least a first and last name";
+  return null;
 };
 
 const NewReservation = () => {
@@ -208,12 +214,19 @@ const NewReservation = () => {
   };
 
   const validateAllPassengers = (): string | null => {
+    const cc = countryCodes.find((c) => c.code === contactCountryCode);
     if (!contactPhone.trim()) return "Contact phone number is required";
-    if (!validatePhone(contactPhone)) return "Contact phone must be exactly 9 digits";
+    if (cc) {
+      if (contactPhone.length < cc.minDigits || contactPhone.length > cc.maxDigits) {
+        return cc.minDigits === cc.maxDigits
+          ? `Contact phone must be ${cc.minDigits} digits for ${cc.country}`
+          : `Contact phone must be between ${cc.minDigits} and ${cc.maxDigits} digits for ${cc.country}`;
+      }
+    }
     for (let i = 0; i < passengers.length; i++) {
       const p = passengers[i];
-      if (!p.name.trim()) return `Passenger ${i + 1}: Name is required`;
-      if (!/^[A-Za-z\u00C0-\u024F\u0600-\u06FF\s'\-]+$/.test(p.name.trim())) return `Passenger ${i + 1}: Full name must contain letters only`;
+      const nameErr = getPassengerNameError(p.name);
+      if (nameErr) return `Passenger ${i + 1}: ${nameErr}`;
       if (!p.email.trim()) return `Passenger ${i + 1}: Email is required`;
       if (!validateEmail(p.email)) return `Passenger ${i + 1}: Please enter a valid email address`;
     }
@@ -883,6 +896,9 @@ const NewReservation = () => {
                   <div className="space-y-1.5">
                     <Label>Full Name *</Label>
                     <Input value={p.name} onChange={(e) => updatePassenger(i, "name", e.target.value.replace(/[^A-Za-z\u00C0-\u024F\u0600-\u06FF\s'\-]/g, ""))} placeholder="e.g. Ahmed Al-Farsi" />
+                    {p.name && getPassengerNameError(p.name) && (
+                      <p className="text-xs text-destructive">{getPassengerNameError(p.name)}</p>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <Label>Email *</Label>
@@ -902,33 +918,46 @@ const NewReservation = () => {
 
             <div className="rounded-xl border border-border bg-card p-6 space-y-4">
               <h3 className="font-display font-semibold text-lg">Contact Information</h3>
-              <div className="space-y-1.5">
-                <Label>Phone (9 digits) *</Label>
-                <div className="flex gap-2">
-                  <Select value={contactCountryCode} onValueChange={setContactCountryCode}>
-                    <SelectTrigger className="w-44">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {countryCodes.map((cc) => (
-                        <SelectItem key={cc.code} value={cc.code}>
-                          {cc.flag} {cc.code} {cc.country}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input 
-                    value={contactPhone} 
-                    onChange={(e) => setContactPhone(e.target.value.replace(/\D/g, "").slice(0, 9))}
-                    placeholder="5XXXXXXXX" 
-                    maxLength={9}
-                    className="flex-1"
-                  />
-                </div>
-                {contactPhone && !validatePhone(contactPhone) && (
-                  <p className="text-xs text-destructive">Phone number must be exactly 9 digits</p>
-                )}
-              </div>
+              {(() => {
+                const cc = countryCodes.find((c) => c.code === contactCountryCode);
+                const minD = cc?.minDigits ?? 9;
+                const maxD = cc?.maxDigits ?? 9;
+                const placeholder = "X".repeat(minD);
+                const phoneErr = contactPhone
+                  ? (contactPhone.length < minD || contactPhone.length > maxD
+                      ? (minD === maxD
+                          ? `Phone number must be ${minD} digits for ${cc?.country}`
+                          : `Phone number must be between ${minD} and ${maxD} digits for ${cc?.country}`)
+                      : null)
+                  : null;
+                return (
+                  <div className="space-y-1.5">
+                    <Label>Phone *</Label>
+                    <div className="flex gap-2">
+                      <Select value={contactCountryCode} onValueChange={(v) => { setContactCountryCode(v); setContactPhone(""); }}>
+                        <SelectTrigger className="w-44">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {countryCodes.map((c) => (
+                            <SelectItem key={c.code} value={c.code}>
+                              {c.flag} {c.code} {c.country}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        value={contactPhone}
+                        onChange={(e) => setContactPhone(e.target.value.replace(/\D/g, "").slice(0, maxD))}
+                        placeholder={placeholder}
+                        maxLength={maxD}
+                        className="flex-1"
+                      />
+                    </div>
+                    {phoneErr && <p className="text-xs text-destructive">{phoneErr}</p>}
+                  </div>
+                );
+              })()}
             </div>
 
             <PaymentCard

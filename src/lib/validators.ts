@@ -30,6 +30,8 @@ export const getNameError = (name: string): string | null => {
   if (!/^[A-Za-z\u00C0-\u024F\u0600-\u06FF\s'\-]+$/.test(name.trim())) {
     return "Full name must contain letters only (no numbers or symbols)";
   }
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length < 2) return "Full name must contain at least a first and last name";
   return null;
 };
 
@@ -45,9 +47,28 @@ export const getEmailError = (email: string): string | null => {
   return null;
 };
 
-export const getPhoneError = (phone: string): string | null => {
+export const getPhoneError = (
+  phone: string,
+  minDigits?: number,
+  maxDigits?: number,
+  countryName?: string,
+): string | null => {
   if (!phone || !phone.trim()) return "Phone number must not be empty";
   if (/[\s\-()]/.test(phone)) return "Phone number must not contain spaces, dashes, or parentheses";
+
+  // When min/max are provided, treat `phone` as the LOCAL digits only (caller strips country code).
+  if (minDigits !== undefined && maxDigits !== undefined) {
+    const localDigits = phone.replace(/\D/g, "");
+    if (!/^[0-9]+$/.test(localDigits)) return "Phone number must contain numbers only";
+    const country = countryName ? ` for ${countryName}` : "";
+    if (localDigits.length < minDigits || localDigits.length > maxDigits) {
+      if (minDigits === maxDigits) return `Phone number must be ${minDigits} digits${country}`;
+      return `Phone number must be between ${minDigits} and ${maxDigits} digits${country}`;
+    }
+    return null;
+  }
+
+  // Legacy mode: validate as full international "+CC+local".
   if (!phone.startsWith("+")) return "Phone number must be in international format starting with +";
   const rest = phone.slice(1);
   if (!/^[0-9]+$/.test(rest)) return "Phone number must contain numbers only after +";
