@@ -214,12 +214,19 @@ const NewReservation = () => {
   };
 
   const validateAllPassengers = (): string | null => {
+    const cc = countryCodes.find((c) => c.code === contactCountryCode);
     if (!contactPhone.trim()) return "Contact phone number is required";
-    if (!validatePhone(contactPhone)) return "Contact phone must be exactly 9 digits";
+    if (cc) {
+      if (contactPhone.length < cc.minDigits || contactPhone.length > cc.maxDigits) {
+        return cc.minDigits === cc.maxDigits
+          ? `Contact phone must be ${cc.minDigits} digits for ${cc.country}`
+          : `Contact phone must be between ${cc.minDigits} and ${cc.maxDigits} digits for ${cc.country}`;
+      }
+    }
     for (let i = 0; i < passengers.length; i++) {
       const p = passengers[i];
-      if (!p.name.trim()) return `Passenger ${i + 1}: Name is required`;
-      if (!/^[A-Za-z\u00C0-\u024F\u0600-\u06FF\s'\-]+$/.test(p.name.trim())) return `Passenger ${i + 1}: Full name must contain letters only`;
+      const nameErr = getPassengerNameError(p.name);
+      if (nameErr) return `Passenger ${i + 1}: ${nameErr}`;
       if (!p.email.trim()) return `Passenger ${i + 1}: Email is required`;
       if (!validateEmail(p.email)) return `Passenger ${i + 1}: Please enter a valid email address`;
     }
