@@ -30,6 +30,8 @@ export const getNameError = (name: string): string | null => {
   if (!/^[A-Za-z\u00C0-\u024F\u0600-\u06FF\s'\-]+$/.test(name.trim())) {
     return "Full name must contain letters only (no numbers or symbols)";
   }
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length < 2) return "Full name must contain at least a first and last name";
   return null;
 };
 
